@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farm Tycoon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            background-color: #f0fdf4; /* Tailwind green-50 */
+            user-select: none;
+            overflow: hidden; /* Prevent scrolling, true app-like feel */
+        }
+        
+        .clickable-area:active {
+            transform: scale(0.95);
+        }
+
+        .pulse-hover:hover {
+            transform: scale(1.02);
+        }
+
+        /* Floating text animation for clicks */
+        @keyframes floatUpAndFade {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-80px) scale(1.5);
+            }
+        }
+
+        .floating-text {
+            position: absolute;
+            color: #15803d; /* Tailwind green-700 */
+            font-weight: bold;
+            font-size: 1.5rem;
+            pointer-events: none; /* Let clicks pass through */
+            animation: floatUpAndFade 1s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
+            z-index: 50;
+        }
+
+        /* Custom scrollbar for upgrades list */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #dcfce7; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4ade80; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #22c55e; 
+        }
+
+        /* Crop continuous slow bounce */
+        @keyframes slowBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .idle-bounce {
+            animation: slowBounce 3s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="text-gray-800 h-screen w-screen flex flex-col md:flex-row overflow-hidden">
+
+    <main class="w-full md:w-1/2 lg:w-3/5 h-[50vh] md:h-screen flex flex-col items-center justify-between p-6 bg-gradient-to-b from-blue-200 to-green-100 relative">
+        
+        <!-- Header / Stats -->
+        <header class="w-full max-w-md bg-white/80 backdrop-blur-md rounded-2xl p-4 shadow-lg text-center border-2 border-green-200 z-10">
+            <h1 class="text-4xl font-bold text-green-700 mb-2 drop-shadow-sm flex items-center justify-center gap-2">
+                <svg class="w-8 h-8" fill="#eab308" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.87 0 .53-.39 1.64-2.25 1.64-1.74 0-2.1-.96-2.17-1.92H8.01c.1 1.7 1.26 2.85 2.88 3.2V19h2.34v-1.67c1.52-.39 2.8-1.45 2.8-2.92 0-2.01-1.61-2.71-3.72-3.27z"/></svg>
+                <span id="coinsDisplay">0</span>
+            </h1>
+            <div class="flex justify-around text-sm md:text-base font-semibold text-gray-600">
+                <div class="bg-green-100 px-3 py-1 rounded-full border border-green-200">
+                    <span id="ipsDisplay">0</span> / sec
+                </div>
+                <div class="bg-blue-100 px-3 py-1 rounded-full border border-blue-200">
+                    <span id="cpcDisplay">1</span> / click
+                </div>
+            </div>
+        </header>
+
+        <!-- Clickable Farm Plot -->
+        <div id="farmPlot" class="relative w-64 h-64 md:w-80 md:h-80 cursor-pointer clickable-area transition-transform flex-grow flex items-center justify-center select-none" style="touch-action: manipulation;">
+            <div class="idle-bounce relative">
+                <!-- Dirt Patch -->
+                <svg width="250" height="100" viewBox="0 0 250 100" class="absolute bottom-0 left-1/2 -translate-x-1/2" style="z-index: 1;">
+                    <ellipse cx="125" cy="50" rx="120" ry="40" fill="#78350f" />
+                    <ellipse cx="125" cy="45" rx="110" ry="35" fill="#92400e" />
+                </svg>
+                <!-- Happy Carrot SVG -->
+                <svg width="150" height="200" viewBox="0 0 100 200" class="relative" style="z-index: 2; margin-bottom: 20px;">
+                    <!-- Leaves -->
+                    <path d="M50 80 Q 20 20 10 40 Q 30 70 50 80" fill="#22c55e" stroke="#166534" stroke-width="2"/>
+                    <path d="M50 80 Q 50 10 50 30 Q 50 70 50 80" fill="#4ade80" stroke="#166534" stroke-width="2"/>
+                    <path d="M50 80 Q 80 20 90 40 Q 70 70 50 80" fill="#22c55e" stroke="#166534" stroke-width="2"/>
+                    <!-- Carrot Body -->
+                    <path d="M30 80 Q 50 200 50 190 Q 50 200 70 80 Z" fill="#f97316" stroke="#c2410c" stroke-width="3"/>
+                    <path d="M30 80 Q 50 70 70 80 Z" fill="#f97316" />
+                    <!-- Lines -->
+                    <line x1="38" y1="100" x2="55" y2="105" stroke="#ea580c" stroke-width="3" stroke-linecap="round"/>
+                    <line x1="62" y1="120" x2="45" y2="125" stroke="#ea580c" stroke-width="3" stroke-linecap="round"/>
+                    <line x1="42" y1="140" x2="55" y2="145" stroke="#ea580c" stroke-width="3" stroke-linecap="round"/>
+                    <!-- Face -->
+                    <circle cx="42" cy="95" r="4" fill="#1e293b"/>
+                    <circle cx="58" cy="95" r="4" fill="#1e293b"/>
+                    <path d="M45 105 Q 50 112 55 105" fill="none" stroke="#1e293b" stroke-width="2.5" stroke-linecap="round"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- System Controls -->
+        <div class="flex gap-4 mb-4 z-10 w-full max-w-md justify-center">
+            <button onclick="saveGame(true)" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md active:scale-95 transition">Save Game</button>
+            <button onclick="resetGame()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md active:scale-95 transition">Reset</button>
+        </div>
+    </main>
+
+    <aside class="w-full md:w-1/2 lg:w-2/5 h-[50vh] md:h-screen bg-green-50 border-l-4 border-green-200 flex flex-col shadow-inner">
+        <div class="p-4 bg-green-600 text-white shadow-md z-10">
+            <h2 class="text-2xl font-bold flex items-center gap-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                Marketplace
+            </h2>
+            <p class="text-green-100 text-sm">Buy tools and automation!</p>
+        </div>
+        
+        <div id="storeContainer" class="flex-grow overflow-y-auto p-4 space-y-4">
+            <!-- Upgrades dynamically injected here -->
+        </div>
+    </aside>
+
+    <div id="offlineModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 shadow-2xl transform scale-95 transition-transform duration-300" id="offlineModalContent">
+            <h3 class="text-2xl font-bold text-green-700 mb-2">Welcome Back!</h3>
+            <p class="text-gray-600 mb-4">While you were away, your farm kept working.</p>
+            <div class="bg-green-50 rounded-xl p-4 border border-green-200 mb-6">
+                <p class="text-sm text-gray-500 mb-1">You earned:</p>
+                <div class="text-3xl font-bold text-yellow-500 flex items-center gap-2">
+                    <svg class="w-6 h-6" fill="#eab308" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                    <span id="offlineEarningsDisplay">0</span>
+                </div>
+            </div>
+            <button onclick="closeOfflineModal()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition active:scale-95 text-lg shadow-md">
+                Awesome!
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const SAVE_KEY = "farmTycoonSaveData";
+        const FPS = 30; // Times per second we process idle income
+        const AUTO_SAVE_INTERVAL = 10000; // 10 seconds
+
+        // Game Configuration defining upgrades
+        const UPGRADES_CONFIG = [
+            { id: "fertilizer", name: "Premium Fertilizer", desc: "+1 Coin per Click", type: "click", baseCost: 15, baseEffect: 1, icon: "🍂" },
+            { id: "hoe", name: "Steel Hoe", desc: "+5 Coins per Click", type: "click", baseCost: 200, baseEffect: 5, icon: "⛏️" },
+            { id: "watering_can", name: "Watering Can", desc: "+1 Coin / sec", type: "auto", baseCost: 50, baseEffect: 1, icon: "💦" },
+            { id: "sprinkler", name: "Sprinkler System", desc: "+10 Coins / sec", type: "auto", baseCost: 400, baseEffect: 10, icon: "🚿" },
+            { id: "greenhouse", name: "Greenhouse", desc: "+50 Coins / sec", type: "auto", baseCost: 2500, baseEffect: 50, icon: "🏡" },
+            { id: "tractor", name: "Tractor", desc: "+300 Coins / sec", type: "auto", baseCost: 15000, baseEffect: 300, icon: "🚜" },
+            { id: "drone", name: "Harvest Drone", desc: "+2000 Coins / sec", type: "auto", baseCost: 100000, baseEffect: 2000, icon: "🛸" },
+            { id: "genetics", name: "GMO Seeds", desc: "+15000 Coins / sec", type: "auto", baseCost: 1000000, baseEffect: 15000, icon: "🧬" },
+        ];
+
+        // Active Game State
+        let state = {
+            coins: 0,
+            cpc: 1, // Coins Per Click
+            ips: 0, // Income Per Second
+            lastSaveTime: Date.now(),
+            inventory: {} // Maps upgrade ID to quantity owned
+        };
+
+        // DOM Elements
+        const DOM = {
+            coins: document.getElementById('coinsDisplay'),
+            ips: document.getElementById('ipsDisplay'),
+            cpc: document.getElementById('cpcDisplay'),
+            store: document.getElementById('storeContainer'),
+            plot: document.getElementById('farmPlot'),
+            offlineModal: document.getElementById('offlineModal'),
+            offlineModalContent: document.getElementById('offlineModalContent'),
+            offlineEarnings: document.getElementById('offlineEarningsDisplay')
+        };
+
+        // Format large numbers
+        function formatNumber(num) {
+            if (num < 1000) return Math.floor(num).toString();
+            if (num < 1000000) return (num / 1000).toFixed(1) + 'k';
+            if (num < 1000000000) return (num / 1000000).toFixed(2) + 'M';
+            return (num / 1000000000).toFixed(2) + 'B';
+        }
+
+        function initGame() {
+            // Initialize inventory defaults if completely new
+            UPGRADES_CONFIG.forEach(upg => {
+                if (state.inventory[upg.id] === undefined) {
+                    state.inventory[upg.id] = 0;
+                }
+            });
+
+            loadGame();
+            recalculateStats();
+            renderStore();
+            updateHUD();
+
+            // Setup main click listener
+            DOM.plot.addEventListener('pointerdown', handleManualClick);
+            
+            // Start loops
+            setInterval(gameLoop, 1000 / FPS);
+            setInterval(() => saveGame(false), AUTO_SAVE_INTERVAL);
+        }
+
+        function recalculateStats() {
+            let newCpc = 1; // Base 1
+            let newIps = 0; // Base 0
+
+            UPGRADES_CONFIG.forEach(upg => {
+                const count = state.inventory[upg.id] || 0;
+                if (count > 0) {
+                    if (upg.type === 'click') newCpc += (upg.baseEffect * count);
+                    if (upg.type === 'auto')  newIps += (upg.baseEffect * count);
+                }
+            });
+
+            state.cpc = newCpc;
+            state.ips = newIps;
+        }
+
+        function getUpgradeCost(id) {
+            const config = UPGRADES_CONFIG.find(u => u.id === id);
+            const count = state.inventory[id] || 0;
+            // Exponential scaling: base_cost * 1.15^count
+            return Math.floor(config.baseCost * Math.pow(1.15, count));
+        }
+
+        function gameLoop() {
+            if (state.ips > 0) {
+                state.coins += (state.ips / FPS);
+                updateHUD();
+                updateStoreUI(); // Update button availability
+            }
+        }
+
+        function handleManualClick(e) {
+            state.coins += state.cpc;
+            updateHUD();
+            updateStoreUI();
+
+            // Visual feedback: Floating text
+            createFloatingText(e.clientX, e.clientY, state.cpc);
+        }
+
+        function createFloatingText(x, y, amount) {
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.innerText = `+${formatNumber(amount)}`;
+            
+            // Randomize position slightly around click
+            const offsetX = (Math.random() - 0.5) * 40;
+            const offsetY = (Math.random() - 0.5) * 40;
+            
+            el.style.left = `${x + offsetX - 20}px`; 
+            el.style.top = `${y + offsetY - 20}px`;
+            
+            document.body.appendChild(el);
+
+            // Cleanup after animation
+            setTimeout(() => {
+                el.remove();
+            }, 1000);
+        }
+
+        function updateHUD() {
+            DOM.coins.innerText = formatNumber(state.coins);
+            DOM.ips.innerText = formatNumber(state.ips);
+            DOM.cpc.innerText = formatNumber(state.cpc);
+        }
+
+        function renderStore() {
+            DOM.store.innerHTML = '';
+            
+            UPGRADES_CONFIG.forEach(upg => {
+                const item = document.createElement('div');
+                item.className = "bg-white p-4 rounded-xl shadow-sm border border-green-100 flex items-center justify-between transition pulse-hover";
+                item.id = `upgrade-card-${upg.id}`;
+                
+                const cost = getUpgradeCost(upg.id);
+                const count = state.inventory[upg.id] || 0;
+
+                item.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="text-3xl bg-green-50 w-12 h-12 flex items-center justify-center rounded-lg shadow-inner border border-green-100">${upg.icon}</div>
+                        <div>
+                            <h3 class="font-bold text-gray-800">${upg.name} <span class="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full ml-1" id="count-${upg.id}">Lvl ${count}</span></h3>
+                            <p class="text-xs text-gray-500">${upg.desc}</p>
+                        </div>
+                    </div>
+                    <button id="btn-${upg.id}" onclick="buyUpgrade('${upg.id}')" class="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-2 px-4 rounded-lg shadow-sm transition">
+                        <span class="flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="#fbbf24" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+                            <span id="cost-${upg.id}">${formatNumber(cost)}</span>
+                        </span>
+                    </button>
+                `;
+                DOM.store.appendChild(item);
+            });
+            updateStoreUI();
+        }
+
+        function updateStoreUI() {
+            UPGRADES_CONFIG.forEach(upg => {
+                const btn = document.getElementById(`btn-${upg.id}`);
+                const cost = getUpgradeCost(upg.id);
+                
+                if (btn) {
+                    if (state.coins >= cost) {
+                        btn.removeAttribute('disabled');
+                    } else {
+                        btn.setAttribute('disabled', 'true');
+                    }
+                }
+            });
+        }
+
+        function buyUpgrade(id) {
+            const cost = getUpgradeCost(id);
+            if (state.coins >= cost) {
+                state.coins -= cost;
+                state.inventory[id] = (state.inventory[id] || 0) + 1;
+                
+                // Visual pop on purchase
+                const card = document.getElementById(`upgrade-card-${id}`);
+                card.style.transform = 'scale(0.97)';
+                setTimeout(() => card.style.transform = '', 100);
+
+                recalculateStats();
+                updateHUD();
+                
+                // Update just this item's specific text to avoid full re-render
+                document.getElementById(`count-${id}`).innerText = `Lvl ${state.inventory[id]}`;
+                document.getElementById(`cost-${id}`).innerText = formatNumber(getUpgradeCost(id));
+                updateStoreUI();
+                saveGame(false); // Silent save on purchase
+            }
+        }
+
+        function saveGame(showNotification = false) {
+            state.lastSaveTime = Date.now();
+            localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+            if (showNotification) {
+                // Quick toast replacement since we can't use alert()
+                showToast("Game Saved successfully!");
+            }
+        }
+
+        function loadGame() {
+            const savedData = localStorage.getItem(SAVE_KEY);
+            if (savedData) {
+                try {
+                    const parsed = JSON.parse(savedData);
+                    // Merge saved data into current state safely
+                    state.coins = parsed.coins || 0;
+                    state.inventory = parsed.inventory || {};
+                    state.lastSaveTime = parsed.lastSaveTime || Date.now();
+                    
+                    // Re-sync config defaults in case new items were added in an update
+                    UPGRADES_CONFIG.forEach(upg => {
+                        if (state.inventory[upg.id] === undefined) {
+                            state.inventory[upg.id] = 0;
+                        }
+                    });
+
+                    recalculateStats();
+
+                    // Offline Progress Calculation
+                    const now = Date.now();
+                    const secondsAway = (now - state.lastSaveTime) / 1000;
+                    
+                    // If away for more than 60 seconds and making passive income
+                    if (secondsAway > 60 && state.ips > 0) {
+                        const earned = secondsAway * state.ips;
+                        state.coins += earned;
+                        showOfflineModal(earned);
+                    }
+                    state.lastSaveTime = now;
+
+                } catch (e) {
+                    console.error("Save file corrupted, starting fresh.", e);
+                }
+            }
+        }
+
+        function resetGame() {
+            // Using custom modal logic since confirm() is forbidden
+            const confirmReset = window.confirm ? false : true; // fallback flag
+            
+            // We'll build a quick custom confirm dialog
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center";
+            overlay.innerHTML = `
+                <div class="bg-white p-6 rounded-2xl max-w-sm w-full mx-4 shadow-2xl text-center">
+                    <h3 class="text-xl font-bold text-red-600 mb-2">Hard Reset</h3>
+                    <p class="text-gray-600 mb-6">Are you sure you want to delete all progress? This cannot be undone.</p>
+                    <div class="flex gap-4">
+                        <button id="cancelReset" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 rounded-lg font-bold">Cancel</button>
+                        <button id="confirmReset" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-bold">Yes, Reset</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            document.getElementById('cancelReset').onclick = () => overlay.remove();
+            document.getElementById('confirmReset').onclick = () => {
+                localStorage.removeItem(SAVE_KEY);
+                location.reload(); // Reload page to start fresh
+            };
+        }
+
+        function showOfflineModal(earned) {
+            DOM.offlineEarnings.innerText = formatNumber(earned);
+            DOM.offlineModal.classList.remove('hidden');
+            // Small delay to allow display:block to apply before animating opacity
+            requestAnimationFrame(() => {
+                DOM.offlineModal.classList.remove('opacity-0');
+                DOM.offlineModalContent.classList.remove('scale-95');
+                DOM.offlineModalContent.classList.add('scale-100');
+            });
+        }
+
+        function closeOfflineModal() {
+            DOM.offlineModal.classList.add('opacity-0');
+            DOM.offlineModalContent.classList.remove('scale-100');
+            DOM.offlineModalContent.classList.add('scale-95');
+            setTimeout(() => {
+                DOM.offlineModal.classList.add('hidden');
+            }, 300); // match transition duration
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = "fixed bottom-4 left-1/2 -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg z-50 transition-opacity duration-300";
+            toast.innerText = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+        // Boot up
+        window.onload = initGame;
+    </script>
+</body>
+</html>
